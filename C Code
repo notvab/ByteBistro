@@ -1,0 +1,360 @@
+
+#include <stdio.h>
+#include <string.h>
+
+#define SIZE 7
+
+struct Food {
+    int id;
+    char name[30];
+    float price;
+    int stock;
+};
+
+struct Food menu[SIZE] = {
+    {1, "Burger", 60, 50},
+    {2, "Pizza", 120, 30},
+    {3, "Sandwich", 50, 40},
+    {4, "Cold Coffee", 40, 50},
+    {5, "French Fries", 70, 35},
+    {6, "Tea", 15, 100},
+    {7, "Momos", 60, 40}
+};
+
+void loadStock() {
+    FILE *fp = fopen("stock.txt", "r");
+    int id, stock;
+
+    if (fp == NULL) {
+        fp = fopen("stock.txt", "w");
+        for (int i = 0; i < SIZE; i++)
+            fprintf(fp, "%d %d\n",
+                    menu[i].id, menu[i].stock);
+        fclose(fp);
+        return;
+    }
+
+    while (fscanf(fp, "%d %d", &id, &stock) == 2) {
+        for (int i = 0; i < SIZE; i++) {
+            if (menu[i].id == id && stock >= 0)
+                menu[i].stock = stock;
+        }
+    }
+    fclose(fp);
+}
+
+void saveStock() {
+    FILE *fp = fopen("stock.txt", "w");
+
+    if (fp == NULL) {
+        printf("\nUnable to save stock!");
+        return;
+    }
+
+    for (int i = 0; i < SIZE; i++)
+        fprintf(fp, "%d %d\n",
+                menu[i].id, menu[i].stock);
+
+    fclose(fp);
+}
+
+void displayMenu() {
+    printf("\n========== FOOD MENU ==========");
+    printf("\nID\tFood\t\tPrice\tStock");
+
+    for (int i = 0; i < SIZE; i++) {
+        printf("\n%d\t%-15s Rs.%.2f\t%d",
+               menu[i].id,
+               menu[i].name,
+               menu[i].price,
+               menu[i].stock);
+    }
+    printf("\n===============================");
+}
+
+int adminLogin() {
+    char username[30], password[30];
+
+    printf("\nEnter Admin Username: ");
+    scanf("%29s", username);
+
+    printf("Enter Admin Password: ");
+    scanf("%29s", password);
+
+    if (strcmp(username, "admin") == 0 &&
+        strcmp(password, "1234") == 0) {
+        printf("\nAdmin Login Successful!");
+        return 1;
+    }
+
+    printf("\nInvalid Login!");
+    return 0;
+}
+
+int getBillNumber() {
+    FILE *fp = fopen("billno.txt", "r");
+    int bill = 1000;
+
+    if (fp != NULL) {
+        fscanf(fp, "%d", &bill);
+        fclose(fp);
+    }
+
+    bill++;
+
+    fp = fopen("billno.txt", "w");
+    if (fp != NULL) {
+        fprintf(fp, "%d", bill);
+        fclose(fp);
+    }
+
+    return bill;
+}
+
+void generateBill() {
+    int qty[SIZE] = {0};
+    int id, quantity;
+    char more;
+
+    float subtotal = 0, discount = 0;
+    float gst, finalAmount;
+
+    printf("\n========== PLACE ORDER ==========");
+
+    do {
+        displayMenu();
+
+        printf("\nEnter Food ID: ");
+        if (scanf("%d", &id) != 1) {
+            printf("\nInvalid input!");
+            return;
+        }
+
+        if (id < 1 || id > SIZE) {
+            printf("\nInvalid Food ID!");
+            return;
+        }
+
+        printf("Enter Quantity: ");
+        if (scanf("%d", &quantity) != 1 ||
+            quantity <= 0) {
+            printf("\nInvalid quantity!");
+            return;
+        }
+
+        int index = id - 1;
+
+        if (qty[index] + quantity > menu[index].stock) {
+            printf("\nInsufficient Stock!");
+            return;
+        }
+
+        qty[index] += quantity;
+
+        printf("\nAdd another item? (y/n): ");
+        scanf(" %c", &more);
+
+    } while (more == 'y' || more == 'Y');
+
+    for (int i = 0; i < SIZE; i++) {
+        subtotal += qty[i] * menu[i].price;
+    }
+
+    if (subtotal == 0) {
+        printf("\nEmpty Order!");
+        return;
+    }
+
+    if (subtotal >= 500)
+        discount = subtotal * 0.10;
+
+    gst = (subtotal - discount) * 0.05;
+    finalAmount = subtotal - discount + gst;
+
+    // Generate bill number
+    int billNo = getBillNumber();
+
+    // Update stock
+    for (int i = 0; i < SIZE; i++) {
+        menu[i].stock -= qty[i];
+    }
+
+    saveStock();
+
+    // Display bill
+    printf("\n\n====================================");
+    printf("\n       SMART CANTEEN INVOICE");
+    printf("\n====================================");
+    printf("\nBill Number: %d", billNo);
+    printf("\n------------------------------------");
+    printf("\nFood\t\tQty\tAmount");
+
+    for (int i = 0; i < SIZE; i++) {
+        if (qty[i] > 0) {
+            printf("\n%-15s %d\tRs.%.2f",
+                   menu[i].name,
+                   qty[i],
+                   qty[i] * menu[i].price);
+        }
+    }
+
+    printf("\n------------------------------------");
+    printf("\nSubtotal:       Rs.%.2f", subtotal);
+    printf("\nDiscount:       Rs.%.2f", discount);
+    printf("\nGST (5%%):       Rs.%.2f", gst);
+    printf("\n------------------------------------");
+    printf("\nFINAL AMOUNT:   Rs.%.2f", finalAmount);
+    printf("\n====================================");
+    printf("\n      THANK YOU! VISIT AGAIN");
+    printf("\n====================================");
+
+    // Save invoice permanently
+    FILE *fp = fopen("bills.txt", "a");
+
+    if (fp != NULL) {
+        fprintf(fp, "\nBill No: %d | Subtotal: %.2f"
+                    " | Discount: %.2f | GST: %.2f"
+                    " | Final: %.2f\n",
+                billNo, subtotal, discount,
+                gst, finalAmount);
+
+        fclose(fp);
+    }
+
+    // Save sales record
+    fp = fopen("sales.txt", "a");
+
+    if (fp != NULL) {
+        fprintf(fp, "%.2f\n", finalAmount);
+        fclose(fp);
+    }
+}
+
+void restockFood() {
+    int id, quantity;
+
+    displayMenu();
+
+    printf("\nEnter Food ID to restock: ");
+    scanf("%d", &id);
+
+    if (id < 1 || id > SIZE) {
+        printf("\nInvalid Food ID!");
+        return;
+    }
+
+    printf("Enter quantity to add: ");
+    scanf("%d", &quantity);
+
+    if (quantity <= 0 ||
+        menu[id - 1].stock > 1000000 - quantity) {
+        printf("\nInvalid quantity!");
+        return;
+    }
+
+    menu[id - 1].stock += quantity;
+    saveStock();
+
+    printf("\nStock Updated Successfully!");
+}
+
+void salesReport() {
+    FILE *fp = fopen("sales.txt", "r");
+    float amount, total = 0;
+    int bills = 0;
+
+    if (fp == NULL) {
+        printf("\nNo Sales Records Found!");
+        return;
+    }
+
+    while (fscanf(fp, "%f", &amount) == 1) {
+        total += amount;
+        bills++;
+    }
+
+    fclose(fp);
+
+    printf("\n======= SALES REPORT =======");
+    printf("\nTotal Bills: %d", bills);
+    printf("\nTotal Revenue: Rs.%.2f", total);
+    printf("\n============================");
+}
+
+int main() {
+    int choice;
+
+    loadStock();
+
+    printf("\n====================================");
+    printf("\n     SMART CANTEEN MANAGEMENT");
+    printf("\n====================================");
+
+    while (1) {
+        printf("\n\n1. Customer Section");
+        printf("\n2. Admin Login");
+        printf("\n3. Exit");
+
+        printf("\nEnter Choice: ");
+
+        if (scanf("%d", &choice) != 1) {
+            printf("\nInvalid input! Restart program.");
+            break;
+        }
+
+        switch (choice) {
+
+            case 1:
+                generateBill();
+                break;
+
+            case 2:
+                if (adminLogin()) {
+                    int adminChoice;
+
+                    do {
+                        printf("\n\n====== ADMIN PANEL ======");
+                        printf("\n1. View Menu");
+                        printf("\n2. Update Food Stock");
+                        printf("\n3. View Sales Report");
+                        printf("\n4. Logout");
+
+                        printf("\nEnter Choice: ");
+                        scanf("%d", &adminChoice);
+
+                        switch (adminChoice) {
+                            case 1:
+                                displayMenu();
+                                break;
+
+                            case 2:
+                                restockFood();
+                                break;
+
+                            case 3:
+                                salesReport();
+                                break;
+
+                            case 4:
+                                printf("\nAdmin Logged Out!");
+                                break;
+
+                            default:
+                                printf("\nInvalid Choice!");
+                        }
+
+                    } while (adminChoice != 4);
+                }
+                break;
+
+            case 3:
+                printf("\nThank You For Using The System!");
+                return 0;
+
+            default:
+                printf("\nInvalid Choice!");
+        }
+    }
+
+    return 0;
+}
