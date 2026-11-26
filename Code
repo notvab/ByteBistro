@@ -1,0 +1,94 @@
+
+#include <stdio.h>
+
+int main()
+{
+    int choice, quantity;
+    int i;
+    int stock[7] = {20, 15, 20, 25, 15, 30, 20};
+    int price[7] = {60, 120, 50, 40, 70, 15, 60};
+    char *food[7] = {
+        "Burger", "Pizza", "Sandwich",
+        "Cold Coffee", "French Fries", "Tea", "Momos"
+    };
+
+    int total = 0;
+    float discount, gst, finalAmount;
+
+    printf("===== SMART CANTEEN =====\n");
+
+    printf("\n----- FOOD MENU -----\n");
+
+    for(i = 0; i < 7; i++)
+    {
+        printf("%d. %s - Rs.%d (Stock: %d)\n",
+               i + 1, food[i], price[i], stock[i]);
+    }
+
+    printf("\nEnter 0 to finish ordering.\n");
+
+    while(1)
+    {
+        printf("\nEnter food number: ");
+        scanf("%d", &choice);
+
+        if(choice == 0)
+            break;
+
+        if(choice < 1 || choice > 7)
+        {
+            printf("Invalid choice!\n");
+            continue;
+        }
+
+        printf("Enter quantity: ");
+        scanf("%d", &quantity);
+
+        if(quantity <= 0)
+        {
+            printf("Invalid quantity!\n");
+            continue;
+        }
+
+        if(quantity > stock[choice - 1])
+        {
+            printf("Sorry! Not enough stock.\n");
+            continue;
+        }
+
+        total = total + price[choice - 1] * quantity;
+
+        stock[choice - 1] =
+        stock[choice - 1] - quantity;
+
+        printf("Item added successfully!\n");
+    }
+
+    if(total == 0)
+    {
+        printf("\nNo order placed.\n");
+        return 0;
+    }
+
+    printf("\n======= FINAL BILL =======\n");
+
+    printf("Subtotal: Rs.%d\n", total);
+
+    if(total >= 500)
+        discount = total * 0.10;
+    else
+        discount = 0;
+
+    gst = (total - discount) * 0.05;
+
+    finalAmount = total - discount + gst;
+
+    printf("Discount: Rs.%.2f\n", discount);
+    printf("GST (5%%): Rs.%.2f\n", gst);
+    printf("--------------------------\n");
+    printf("Final Amount: Rs.%.2f\n", finalAmount);
+
+    printf("\nThank you for visiting!\n");
+
+    return 0;
+}
